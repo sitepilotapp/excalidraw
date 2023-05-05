@@ -145,10 +145,10 @@ export const loadSceneOrLibraryFromBlob = async (
               ...cleanAppStateForExport(data.appState || {}),
               ...(localAppState
                 ? calculateScrollCenter(
-                    data.elements || [],
-                    localAppState,
-                    null,
-                  )
+                  data.elements || [],
+                  localAppState,
+                  null,
+                )
                 : {}),
             },
             files: data.files,
@@ -286,40 +286,38 @@ export const resizeImageFile = async (
     return file;
   }
 
-  const [pica, imageBlobReduce] = await Promise.all([
-    import("pica").then((res) => res.default),
-    // a wrapper for pica for better API
-    import("image-blob-reduce").then((res) => res.default),
+  const [Compressor] = await Promise.all([
+    import("compressorjs").then((res) => res.default),
   ]);
 
-  // CRA's minification settings break pica in WebWorkers, so let's disable
-  // them for now
-  // https://github.com/nodeca/image-blob-reduce/issues/21#issuecomment-757365513
-  const reduce = imageBlobReduce({
-    pica: pica({ features: ["js", "wasm"] }),
-  });
-
-  if (opts.outputType) {
-    const { outputType } = opts;
-    reduce._create_blob = function (env) {
-      return this.pica.toBlob(env.out_canvas, outputType, 0.8).then((blob) => {
-        env.out_blob = blob;
-        return env;
+  const compressFile = () =>
+    new Promise<File | Blob>((resolve, reject) => {
+      new Compressor(file, {
+        maxHeight: opts.maxWidthOrHeight,
+        maxWidth: opts.maxWidthOrHeight,
+        quality: 0.8,
+        // ...(file.size > 1024 * 1024 * 10 && {convertSize: 1024*10})
+        //force default compress 5mb
+        success(result) {
+          resolve(result);
+        },
+        error(err) {
+          console.error(err.message);
+          reject(err);
+        },
       });
-    };
-  }
+    });
 
   if (!isSupportedImageFile(file)) {
     throw new Error(t("errors.unsupportedFileType"));
   }
 
-  return new File(
-    [await reduce.toBlob(file, { max: opts.maxWidthOrHeight })],
-    file.name,
-    {
-      type: opts.outputType || file.type,
-    },
-  );
+  const compressedResult = await compressFile();
+  const crf = new File([compressedResult], file.name, {
+    type: file.type,
+  });
+
+  return crf;
 };
 
 export const SVGStringToFile = (SVGString: string, filename: string = "") => {

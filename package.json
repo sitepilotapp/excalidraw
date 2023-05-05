@@ -27,6 +27,7 @@
     "@tldraw/vec": "1.7.1",
     "browser-fs-access": "0.29.1",
     "clsx": "1.1.1",
+    "compressorjs": "1.2.1",
     "cross-env": "7.0.3",
     "fake-indexeddb": "3.1.7",
     "firebase": "8.3.3",

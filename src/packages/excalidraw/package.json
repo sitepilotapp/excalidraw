@@ -1,8 +1,8 @@
 {
-  "name": "@excalidraw/excalidraw",
-  "version": "0.15.2",
+  "name": "@sitepilot/canvas",
+  "version": "1.0.0",
   "main": "main.js",
-  "types": "types/packages/excalidraw/index.d.ts",
+  "types": "types/packages/sitepilot/index.d.ts",
   "files": [
     "dist/*",
     "types/*"
@@ -10,15 +10,15 @@
   "publishConfig": {
     "access": "public"
   },
-  "description": "Excalidraw as a React component",
-  "repository": "https://github.com/excalidraw/excalidraw",
+  "description": "Sitepilot canvas as a React component",
+  "repository": "https://github.com/sitepilotapp",
   "license": "MIT",
   "keywords": [
-    "excalidraw",
-    "excalidraw-embed",
+    "sitepilot",
+    "sitepilot-embed",
     "react",
     "npm",
-    "npm excalidraw"
+    "npm sitepilot"
   ],
   "browserslist": {
     "production": [
@@ -70,8 +70,8 @@
     "webpack-dev-server": "4.9.3",
     "webpack-merge": "5.8.0"
   },
-  "bugs": "https://github.com/excalidraw/excalidraw/issues",
-  "homepage": "https://github.com/excalidraw/excalidraw/tree/master/src/packages/excalidraw",
+  "bugs": "https://github.com/sitepilotapp/",
+  "homepage": "https://github.com/sitepilotapp/",
   "scripts": {
     "gen:types": "tsc --project ../../../tsconfig-types.json",
     "build:umd": "rm -rf dist && cross-env NODE_ENV=production webpack --config webpack.prod.config.js && cross-env NODE_ENV=development webpack --config webpack.dev.config.js && yarn gen:types",
@@ -80,5 +80,6 @@
     "start": "webpack serve --config webpack.dev-server.config.js",
     "install:deps": "yarn install --frozen-lockfile && yarn --cwd ../../../",
     "build:example": "EXAMPLE=true webpack --config webpack.dev-server.config.js && yarn gen:types"
-  }
+  },
+  "dependencies": {}
 }
