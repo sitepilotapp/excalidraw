@@ -289,7 +289,7 @@ export const resizeImageFile = async (
   const [Compressor] = await Promise.all([
     import("compressorjs").then((res) => res.default),
   ]);
-
+  console.log("FILE", file);
   const compressFile = () =>
     new Promise<File | Blob>((resolve, reject) => {
       new Compressor(file, {
@@ -314,8 +314,9 @@ export const resizeImageFile = async (
 
   const compressedResult = await compressFile();
   const crf = new File([compressedResult], file.name, {
-    type: file.type,
+    type: file.size >= 5 * 1000 * 1000 ? "image/jpeg" : file.type,
   });
+  console.log("COMPRESSED FILE", crf);
 
   return crf;
 };
