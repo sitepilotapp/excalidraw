@@ -1,6 +1,5 @@
 import oc from "open-color";
-
-import colors from "./colors";
+import { COLOR_PALETTE } from "./colors";
 import {
   CURSOR_TYPE,
   DEFAULT_VERSION,
@@ -372,7 +371,7 @@ export const setEraserCursor = (
 
 export const setCursorForShape = (
   canvas: HTMLCanvasElement | null,
-  appState: AppState,
+  appState: Pick<AppState, "activeTool" | "theme">,
 ) => {
   if (!canvas) {
     return;
@@ -529,7 +528,7 @@ export const isTransparent = (color: string) => {
   return (
     isRGBTransparent ||
     isRRGGBBTransparent ||
-    color === colors.elementBackground[0]
+    color === COLOR_PALETTE.transparent
   );
 };
 
@@ -787,7 +786,12 @@ export const isShallowEqual = <
       ? comparator(objA[key], objB[key])
       : objA[key] === objB[key];
     if (!ret && debug) {
-      console.warn(`isShallowEqual: ${key} not equal ->`, objA[key], objB[key]);
+      console.info(
+        `%cisShallowEqual: ${key} not equal ->`,
+        "color: #8B4000",
+        objA[key],
+        objB[key],
+      );
     }
     return ret;
   });

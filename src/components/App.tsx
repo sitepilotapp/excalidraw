@@ -33,7 +33,7 @@ import {
   actionBindText,
   actionUngroup,
   actionLink,
-  actionToggleLock,
+  actionToggleElementLock,
   actionToggleLinearEditor,
 } from "../actions";
 import { createRedoAction, createUndoAction } from "../actions/actionHistory";
@@ -59,6 +59,7 @@ import {
   ELEMENT_TRANSLATE_AMOUNT,
   ENV,
   EVENT,
+  EXPORT_IMAGE_TYPES,
   GRID_SIZE,
   IMAGE_MIME_TYPES,
   IMAGE_RENDER_TIMEOUT,
@@ -82,7 +83,7 @@ import {
   VERTICAL_ALIGN,
   ZOOM_STEP,
 } from "../constants";
-import { loadFromBlob } from "../data";
+import { exportCanvas, loadFromBlob } from "../data";
 import Library, { distributeLibraryItemsOnSquareGrid } from "../data/library";
 import { restore, restoreElements } from "../data/restore";
 import {
@@ -237,6 +238,7 @@ import {
   getShortcutKey,
   isTransparent,
   easeToValuesRAF,
+  muteFSAbortError,
 } from "../utils";
 import {
   ContextMenu,
@@ -251,6 +253,7 @@ import {
   generateIdFromFile,
   getDataURL,
   getFileFromEvent,
+  isImageFileHandle,
   isSupportedImageFile,
   loadSceneOrLibraryFromBlob,
   normalizeFile,
@@ -290,6 +293,7 @@ import {
   isLocalLink,
 } from "../element/Hyperlink";
 import { shouldShowBoundingBox } from "../element/transformHandles";
+import { actionUnlockAllElements } from "../actions/actionElementLock";
 import { Fonts } from "../scene/Fonts";
 import { actionPaste } from "../actions/actionClipboard";
 import {
@@ -309,6 +313,7 @@ const deviceContextInitialValue = {
   isMobile: false,
   isTouchScreen: false,
   canDeviceFitSidebar: false,
+  isLandscape: false,
 };
 const DeviceContext = React.createContext<Device>(deviceContextInitialValue);
 DeviceContext.displayName = "DeviceContext";
@@ -617,6 +622,7 @@ class App extends React.Component<AppProps, AppState> {
                           }
                           UIOptions={this.props.UIOptions}
                           onImageAction={this.onImageAction}
+                          onExportImage={this.onExportImage}
                           renderWelcomeScreen={
                             !this.state.isLoading &&
                             this.state.showWelcomeScreen &&
@@ -656,7 +662,7 @@ class App extends React.Component<AppProps, AppState> {
                         )}
                         <main>{this.renderCanvas()}</main>
                       </ExcalidrawActionManagerContext.Provider>
-                    </ExcalidrawElementsContext.Provider>{" "}
+                    </ExcalidrawElementsContext.Provider>
                   </ExcalidrawAppStateContext.Provider>
                 </ExcalidrawSetAppStateContext.Provider>
               </DeviceContext.Provider>
@@ -685,6 +691,37 @@ class App extends React.Component<AppProps, AppState> {
       position: "center",
       files: null,
     });
+  };
+
+  public onExportImage = async (
+    type: keyof typeof EXPORT_IMAGE_TYPES,
+    elements: readonly NonDeletedExcalidrawElement[],
+  ) => {
+    trackEvent("export", type, "ui");
+    const fileHandle = await exportCanvas(
+      type,
+      elements,
+      this.state,
+      this.files,
+      {
+        exportBackground: this.state.exportBackground,
+        name: this.state.name,
+        viewBackgroundColor: this.state.viewBackgroundColor,
+      },
+    )
+      .catch(muteFSAbortError)
+      .catch((error) => {
+        console.error(error);
+        this.setState({ errorMessage: error.message });
+      });
+
+    if (
+      this.state.exportEmbedScene &&
+      fileHandle &&
+      isImageFileHandle(fileHandle)
+    ) {
+      this.setState({ fileHandle });
+    }
   };
 
   private syncActionResult = withBatchedUpdates(
@@ -911,6 +948,7 @@ class App extends React.Component<AppProps, AppState> {
         ? this.props.UIOptions.dockedSidebarBreakpoint
         : MQ_RIGHT_SIDEBAR_MIN_WIDTH;
     this.device = updateObject(this.device, {
+      isLandscape: width > height,
       isSmScreen: width < MQ_SM_MAX_WIDTH,
       isMobile:
         width < MQ_MAX_WIDTH_PORTRAIT ||
@@ -1034,6 +1072,7 @@ class App extends React.Component<AppProps, AppState> {
     this.unmounted = true;
     this.removeEventListeners();
     this.scene.destroy();
+    this.library.destroy();
     clearTimeout(touchTimeout);
     touchTimeout = 0;
   }
@@ -2118,6 +2157,7 @@ class App extends React.Component<AppProps, AppState> {
         event.shiftKey &&
         event[KEYS.CTRL_OR_CMD]
       ) {
+        event.preventDefault();
         this.setState({ openDialog: "imageExport" });
         return;
       }
@@ -2287,11 +2327,11 @@ class App extends React.Component<AppProps, AppState> {
           (hasBackground(this.state.activeTool.type) ||
             selectedElements.some((element) => hasBackground(element.type)))
         ) {
-          this.setState({ openPopup: "backgroundColorPicker" });
+          this.setState({ openPopup: "elementBackground" });
           event.stopPropagation();
         }
         if (event.key === KEYS.S) {
-          this.setState({ openPopup: "strokeColorPicker" });
+          this.setState({ openPopup: "elementStroke" });
           event.stopPropagation();
         }
       }
@@ -6347,6 +6387,7 @@ class App extends React.Component<AppProps, AppState> {
         copyText,
         CONTEXT_MENU_SEPARATOR,
         actionSelectAll,
+        actionUnlockAllElements,
         CONTEXT_MENU_SEPARATOR,
         actionToggleGridMode,
         actionToggleZenMode,
@@ -6393,7 +6434,7 @@ class App extends React.Component<AppProps, AppState> {
       actionToggleLinearEditor,
       actionLink,
       actionDuplicateSelection,
-      actionToggleLock,
+      actionToggleElementLock,
       CONTEXT_MENU_SEPARATOR,
       actionDeleteSelected,
     ];

@@ -1,11 +1,16 @@
-import React, { useState, useCallback } from "react";
+import React, { useCallback } from "react";
 import Library, {
   distributeLibraryItemsOnSquareGrid,
   libraryItemsAtom,
 } from "../data/library";
 import { t } from "../i18n";
 import { randomId } from "../random";
-import { LibraryItems, LibraryItem, AppState, ExcalidrawProps } from "../types";
+import {
+  LibraryItems,
+  LibraryItem,
+  ExcalidrawProps,
+  UIAppState,
+} from "../types";
 import LibraryMenuItems from "./LibraryMenuItems";
 import { trackEvent } from "../analytics";
 import { atom, useAtom } from "jotai";
@@ -38,19 +43,15 @@ export const LibraryMenuContent = ({
   library,
   id,
   appState,
-  selectedItems,
-  onSelectItems,
 }: {
   pendingElements: LibraryItem["elements"];
   onInsertLibraryItems: (libraryItems: LibraryItems) => void;
   onAddToLibrary: () => void;
-  setAppState: React.Component<any, AppState>["setState"];
+  setAppState: React.Component<any, UIAppState>["setState"];
   libraryReturnUrl: ExcalidrawProps["libraryReturnUrl"];
   library: Library;
   id: string;
-  appState: AppState;
-  selectedItems: LibraryItem["id"][];
-  onSelectItems: (id: LibraryItem["id"][]) => void;
+  appState: UIAppState;
 }) => {
   const [libraryItemsData] = useAtom(libraryItemsAtom, jotaiScope);
 
@@ -108,20 +109,17 @@ export const LibraryMenuContent = ({
         }
         onInsertLibraryItems={onInsertLibraryItems}
         pendingElements={pendingElements}
-        selectedItems={selectedItems}
-        onSelectItems={onSelectItems}
         id={id}
         libraryReturnUrl={libraryReturnUrl}
         theme={appState.theme}
       />
       {showBtn && (
         <LibraryMenuControlButtons
+          className="library-menu-control-buttons--at-bottom"
           style={{ padding: "16px 12px 0 12px" }}
           id={id}
           libraryReturnUrl={libraryReturnUrl}
           theme={appState.theme}
-          selectedItems={selectedItems}
-          onSelectItems={onSelectItems}
         />
       )}
     </LibraryMenuWrapper>
@@ -139,9 +137,8 @@ export const LibraryMenu = () => {
   const setAppState = useExcalidrawSetAppState();
   const elements = useExcalidrawElements();
 
-  const [selectedItems, setSelectedItems] = useState<LibraryItem["id"][]>([]);
-
-  const deselectItems = useCallback(() => {
+  const onAddToLibrary = useCallback(() => {
+    // deselect canvas elements
     setAppState({
       selectedElementIds: {},
       selectedGroupIds: {},
@@ -154,14 +151,12 @@ export const LibraryMenu = () => {
       onInsertLibraryItems={(libraryItems) => {
         onInsertElements(distributeLibraryItemsOnSquareGrid(libraryItems));
       }}
-      onAddToLibrary={deselectItems}
+      onAddToLibrary={onAddToLibrary}
       setAppState={setAppState}
       libraryReturnUrl={appProps.libraryReturnUrl}
       library={library}
       id={id}
       appState={appState}
-      selectedItems={selectedItems}
-      onSelectItems={setSelectedItems}
     />
   );
 };
