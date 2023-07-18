@@ -7,6 +7,7 @@ const pick = <R extends Record<string, any>, K extends readonly (keyof R)[]>(
   keys: K,
 ) => {
   return keys.reduce((acc, key: K[number]) => {
+    //@ts-ignore
     if (key in source) {
       acc[key] = source[key];
     }
