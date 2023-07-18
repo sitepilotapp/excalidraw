@@ -1,6 +1,6 @@
 {
   "name": "@sitepilot/canvas",
-  "version": "1.5.6",
+  "version": "1.5.7",
   "main": "main.js",
   "types": "types/packages/sitepilot/index.d.ts",
   "files": [
