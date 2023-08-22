@@ -53,6 +53,7 @@ export default defineConfig({
     svgrPlugin(),
     ViteEjsPlugin(),
     VitePWA({
+      registerType: "autoUpdate",
       devOptions: {
         /* set this flag to true to enable in Development mode */
         enabled: false,
@@ -60,7 +61,7 @@ export default defineConfig({
 
       workbox: {
         // Don't push fonts and locales to app precache
-        globIgnores: ["fonts.css", "**/locales/**"],
+        globIgnores: ["fonts.css", "**/locales/**", "service-worker.js"],
         runtimeCaching: [
           {
             urlPattern: new RegExp("/.+.(ttf|woff2|otf)"),
