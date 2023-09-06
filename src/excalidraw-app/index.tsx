@@ -8,6 +8,7 @@ import { TopErrorBoundary } from "../components/TopErrorBoundary";
 import {
   APP_NAME,
   EVENT,
+  MIME_TYPES,
   THEME,
   TITLE_TIMEOUT,
   VERSION_TIMEOUT,
@@ -254,11 +255,11 @@ const initializeScene = async (opts: {
   } else if (scene) {
     return isExternalScene && jsonBackendMatch
       ? {
-          scene,
-          isExternalScene,
-          id: jsonBackendMatch[1],
-          key: jsonBackendMatch[2],
-        }
+        scene,
+        isExternalScene,
+        id: jsonBackendMatch[1],
+        key: jsonBackendMatch[2],
+      }
       : { scene, isExternalScene: false };
   }
   return { scene: null, isExternalScene: false };
@@ -268,6 +269,111 @@ const detectedLangCode = languageDetector.detect() || defaultLang.code;
 export const appLangCodeAtom = atom(
   Array.isArray(detectedLangCode) ? detectedLangCode[0] : detectedLangCode,
 );
+
+function base64toBlob(
+  base64Data: string,
+  contentType: typeof MIME_TYPES[keyof typeof MIME_TYPES],
+) {
+  contentType = contentType || "";
+  const sliceSize = 1024;
+  const byteCharacters = window.atob(base64Data.split(",")[1]);
+  const bytesLength = byteCharacters.length;
+  const slicesCount = Math.ceil(bytesLength / sliceSize);
+  const byteArrays = new Array(slicesCount);
+
+  for (let sliceIndex = 0; sliceIndex < slicesCount; ++sliceIndex) {
+    const begin = sliceIndex * sliceSize;
+    const end = Math.min(begin + sliceSize, bytesLength);
+
+    const bytes = new Array(end - begin);
+    for (let offset = begin, i = 0; offset < end; ++i, ++offset) {
+      bytes[i] = byteCharacters[offset].charCodeAt(0);
+    }
+    byteArrays[sliceIndex] = new Uint8Array(bytes);
+  }
+  return new Blob(byteArrays, { type: contentType });
+}
+
+const toDataURL = (url: string): Promise<string | ArrayBuffer | null> =>
+  fetch(url)
+    .then((response) => response.blob())
+    .then(
+      (blob) =>
+        new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        }),
+    );
+
+const SidebarLibrary = () => {
+  const handleDragStart = (event: React.DragEvent<HTMLImageElement>) => {
+    console.log("event", event);
+    // event.dataTransfer.setData("text/plain", "Drag Me Button");
+    event.dataTransfer.dropEffect = "copy";
+    const base64Image = (event.target as HTMLImageElement).src;
+    if (!base64Image) {
+      return;
+    }
+    event.dataTransfer.setData(
+      "application/vnd.sitepilotlibraryimage",
+      base64Image,
+    );
+
+    // event.dataTransfer.setData("text/plain", url as string);
+    // const imageBlob = base64toBlob(url as string, "image/jpeg");
+    // console.log("URL & BLOB", {
+    //   url,
+    //   imageBlob,
+    // });
+    // event.dataTransfer.setData("file", imageBlob.toString());
+  };
+
+  useEffect(() => {
+    const draggableImages =
+      document.querySelectorAll<HTMLImageElement>("img[draggable]");
+
+    console.log("draggableImages", draggableImages);
+    for (let i = 0; i < draggableImages.length; i++) {
+      (draggableImages[i] as HTMLImageElement).ondragstart = (ev) => {
+        ev.dataTransfer?.setData("text/plain", i.toString());
+      };
+    }
+    return () => {
+      for (let i = 0; i < draggableImages.length; i++) {
+        draggableImages[i].ondragstart = null;
+      }
+    };
+  }, []);
+  return (
+    <div
+      className=""
+      style={{
+        padding: "32px",
+        backgroundColor: "#ccc",
+        height: "100%",
+      }}
+    >
+      <img
+        src="https://static-00.iconduck.com/assets.00/book-icon-512x465-lnk00mrh.png"
+        alt="book"
+        width="100"
+        height="100"
+        draggable
+      // onDragStart={handleDragStart}
+      />
+      <img
+        src="https://img.icons8.com/?size=50&id=xBLuGOCEnfFh&format=png"
+        alt="book"
+        width="100"
+        height="100"
+        draggable
+      // onDragStart={handleDragStart}
+      />
+    </div>
+  );
+};
 
 const ExcalidrawWrapper = () => {
   const [errorMessage, setErrorMessage] = useState("");
@@ -678,110 +784,128 @@ const ExcalidrawWrapper = () => {
 
   return (
     <div
-      style={{ height: "100%" }}
-      className={clsx("excalidraw-app", {
-        "is-collaborating": isCollaborating,
-      })}
+      className=""
+      style={{
+        display: "flex",
+        height: "100%",
+      }}
     >
-      <Excalidraw
-        ref={excalidrawRefCallback}
-        onChange={onChange}
-        initialData={initialStatePromiseRef.current.promise}
-        isCollaborating={isCollaborating}
-        onPointerUpdate={collabAPI?.onPointerUpdate}
-        UIOptions={{
-          canvasActions: {
-            toggleTheme: true,
-            export: {
-              onExportToBackend,
-              renderCustomUI: (elements, appState, files) => {
-                return (
-                  <ExportToExcalidrawPlus
-                    elements={elements}
-                    appState={appState}
-                    files={files}
-                    onError={(error) => {
-                      excalidrawAPI?.updateScene({
-                        appState: {
-                          errorMessage: error.message,
-                        },
-                      });
-                    }}
-                  />
-                );
+      <div
+        style={{ height: "100%", width: "70%" }}
+        className={clsx("excalidraw-app", {
+          "is-collaborating": isCollaborating,
+        })}
+      >
+        <Excalidraw
+          ref={excalidrawRefCallback}
+          onChange={onChange}
+          initialData={initialStatePromiseRef.current.promise}
+          isCollaborating={isCollaborating}
+          onPointerUpdate={collabAPI?.onPointerUpdate}
+          UIOptions={{
+            canvasActions: {
+              toggleTheme: true,
+              export: {
+                onExportToBackend,
+                renderCustomUI: (elements, appState, files) => {
+                  return (
+                    <ExportToExcalidrawPlus
+                      elements={elements}
+                      appState={appState}
+                      files={files}
+                      onError={(error) => {
+                        excalidrawAPI?.updateScene({
+                          appState: {
+                            errorMessage: error.message,
+                          },
+                        });
+                      }}
+                    />
+                  );
+                },
               },
             },
-          },
-        }}
-        langCode={langCode}
-        renderCustomStats={renderCustomStats}
-        detectScroll={false}
-        handleKeyboardGlobally={true}
-        onLibraryChange={onLibraryChange}
-        autoFocus={true}
-        theme={theme}
-        renderTopRightUI={(isMobile) => {
-          if (isMobile || !collabAPI || isCollabDisabled) {
-            return null;
-          }
-          return (
-            <LiveCollaborationTrigger
-              isCollaborating={isCollaborating}
-              onSelect={() => setCollabDialogShown(true)}
+          }}
+          langCode={langCode}
+          renderCustomStats={renderCustomStats}
+          detectScroll={false}
+          handleKeyboardGlobally={true}
+          onLibraryChange={onLibraryChange}
+          autoFocus={true}
+          theme={theme}
+          renderTopRightUI={(isMobile) => {
+            if (isMobile || !collabAPI || isCollabDisabled) {
+              return null;
+            }
+            return (
+              <LiveCollaborationTrigger
+                isCollaborating={isCollaborating}
+                onSelect={() => setCollabDialogShown(true)}
+              />
+            );
+          }}
+        >
+          <AppMainMenu
+            setCollabDialogShown={setCollabDialogShown}
+            isCollaborating={isCollaborating}
+            isCollabEnabled={!isCollabDisabled}
+          />
+          <AppWelcomeScreen
+            setCollabDialogShown={setCollabDialogShown}
+            isCollabEnabled={!isCollabDisabled}
+          />
+          <OverwriteConfirmDialog>
+            <OverwriteConfirmDialog.Actions.ExportToImage />
+            <OverwriteConfirmDialog.Actions.SaveToDisk />
+            {excalidrawAPI && (
+              <OverwriteConfirmDialog.Action
+                title={t("overwriteConfirm.action.excalidrawPlus.title")}
+                actionLabel={t("overwriteConfirm.action.excalidrawPlus.button")}
+                onClick={() => {
+                  exportToExcalidrawPlus(
+                    excalidrawAPI.getSceneElements(),
+                    excalidrawAPI.getAppState(),
+                    excalidrawAPI.getFiles(),
+                  );
+                }}
+              >
+                {t("overwriteConfirm.action.excalidrawPlus.description")}
+              </OverwriteConfirmDialog.Action>
+            )}
+          </OverwriteConfirmDialog>
+          <AppFooter />
+          {isCollaborating && isOffline && (
+            <div className="collab-offline-warning">
+              {t("alerts.collabOfflineWarning")}
+            </div>
+          )}
+          {latestShareableLink && (
+            <ShareableLinkDialog
+              link={latestShareableLink}
+              onCloseRequest={() => setLatestShareableLink(null)}
+              setErrorMessage={setErrorMessage}
             />
-          );
+          )}
+          {excalidrawAPI && !isCollabDisabled && (
+            <Collab excalidrawAPI={excalidrawAPI} />
+          )}
+          {errorMessage && (
+            <ErrorDialog onClose={() => setErrorMessage("")}>
+              {errorMessage}
+            </ErrorDialog>
+          )}
+        </Excalidraw>
+      </div>
+      <div
+        style={{
+          width: "30%",
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
         }}
       >
-        <AppMainMenu
-          setCollabDialogShown={setCollabDialogShown}
-          isCollaborating={isCollaborating}
-          isCollabEnabled={!isCollabDisabled}
-        />
-        <AppWelcomeScreen
-          setCollabDialogShown={setCollabDialogShown}
-          isCollabEnabled={!isCollabDisabled}
-        />
-        <OverwriteConfirmDialog>
-          <OverwriteConfirmDialog.Actions.ExportToImage />
-          <OverwriteConfirmDialog.Actions.SaveToDisk />
-          {excalidrawAPI && (
-            <OverwriteConfirmDialog.Action
-              title={t("overwriteConfirm.action.excalidrawPlus.title")}
-              actionLabel={t("overwriteConfirm.action.excalidrawPlus.button")}
-              onClick={() => {
-                exportToExcalidrawPlus(
-                  excalidrawAPI.getSceneElements(),
-                  excalidrawAPI.getAppState(),
-                  excalidrawAPI.getFiles(),
-                );
-              }}
-            >
-              {t("overwriteConfirm.action.excalidrawPlus.description")}
-            </OverwriteConfirmDialog.Action>
-          )}
-        </OverwriteConfirmDialog>
-        <AppFooter />
-        {isCollaborating && isOffline && (
-          <div className="collab-offline-warning">
-            {t("alerts.collabOfflineWarning")}
-          </div>
-        )}
-        {latestShareableLink && (
-          <ShareableLinkDialog
-            link={latestShareableLink}
-            onCloseRequest={() => setLatestShareableLink(null)}
-            setErrorMessage={setErrorMessage}
-          />
-        )}
-        {excalidrawAPI && !isCollabDisabled && (
-          <Collab excalidrawAPI={excalidrawAPI} />
-        )}
-        {errorMessage && (
-          <ErrorDialog onClose={() => setErrorMessage("")}>
-            {errorMessage}
-          </ErrorDialog>
-        )}
-      </Excalidraw>
+        <SidebarLibrary />
+      </div>
     </div>
   );
 };

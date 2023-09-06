@@ -208,8 +208,8 @@ export default function LibraryMenuItems({
       className="library-menu-items-container"
       style={
         pendingElements.length ||
-        unpublishedItems.length ||
-        publishedItems.length
+          unpublishedItems.length ||
+          publishedItems.length
           ? { justifyContent: "flex-start" }
           : { borderBottom: 0 }
       }
@@ -290,10 +290,10 @@ export default function LibraryMenuItems({
           {(publishedItems.length > 0 ||
             pendingElements.length > 0 ||
             unpublishedItems.length > 0) && (
-            <div className="library-menu-items-container__header library-menu-items-container__header--excal">
-              {t("labels.excalidrawLib")}
-            </div>
-          )}
+              <div className="library-menu-items-container__header library-menu-items-container__header--excal">
+                {t("labels.excalidrawLib")}
+              </div>
+            )}
           {publishedItems.length > 0 ? (
             <LibraryMenuSectionGrid>
               <LibraryMenuSection
