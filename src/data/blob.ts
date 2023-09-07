@@ -443,3 +443,54 @@ export const blobToArrayBuffer = (blob: Blob): Promise<ArrayBuffer> => {
     reader.readAsArrayBuffer(blob);
   });
 };
+
+export function base64toBlob(
+  base64Data: string,
+  contentType: typeof MIME_TYPES[keyof typeof MIME_TYPES],
+) {
+  contentType = contentType || "";
+  const sliceSize = 1024;
+  const byteCharacters = window.atob(base64Data.split(",")[1]);
+  const bytesLength = byteCharacters.length;
+  const slicesCount = Math.ceil(bytesLength / sliceSize);
+  const byteArrays = new Array(slicesCount);
+
+  for (let sliceIndex = 0; sliceIndex < slicesCount; ++sliceIndex) {
+    const begin = sliceIndex * sliceSize;
+    const end = Math.min(begin + sliceSize, bytesLength);
+
+    const bytes = new Array(end - begin);
+    for (let offset = begin, i = 0; offset < end; ++i, ++offset) {
+      bytes[i] = byteCharacters[offset].charCodeAt(0);
+    }
+    byteArrays[sliceIndex] = new Uint8Array(bytes);
+  }
+  return new Blob(byteArrays, { type: contentType });
+}
+
+export const toDataURL = (url: string): Promise<string | ArrayBuffer | null> =>
+  fetch(url)
+    .then((response) => response.blob())
+    .then(
+      (blob) =>
+        new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        }),
+    );
+
+export const base64ToFile = (base64: string, filename: string) => {
+  const arr = base64.split(",");
+  const mime = arr[0].match(/:(.*?);/)![1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+
+  return new File([u8arr], filename, { type: mime });
+};

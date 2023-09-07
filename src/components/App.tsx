@@ -270,6 +270,7 @@ import LayerUI from "./LayerUI";
 import { Toast } from "./Toast";
 import { actionToggleViewMode } from "../actions/actionToggleViewMode";
 import {
+  base64ToFile,
   dataURLToFile,
   generateIdFromFile,
   getDataURL,
@@ -281,6 +282,7 @@ import {
   parseLibraryJSON,
   resizeImageFile,
   SVGStringToFile,
+  toDataURL,
 } from "../data/blob";
 import {
   getInitializedImageElements,
@@ -7438,33 +7440,44 @@ class App extends React.Component<AppProps, AppState> {
     }
   };
 
+  private getImageLibraryItems = () => {
+    return document.querySelectorAll("img[data-library-image]");
+  };
+
   private handleAppOnDrop = async (event: React.DragEvent<HTMLDivElement>) => {
     // must be retrieved first, in the same frame
-    console.log("handleAppOnDrop", event);
-    if (true) {
-      try {
-        const item = event.dataTransfer.items[0];
-        console.log("handleAppOnDrop item", {
-          item,
-          dataTransfer: event.dataTransfer.types,
-          getData: event.dataTransfer.getData(
-            "application/vnd.sitepilotlibraryimage",
-          ),
-          index: event.dataTransfer.getData("text/plain"),
-        });
+    let file = null;
 
-        const handle: FileSystemHandle | null =
-          (await (item as any).getAsFileSystemHandle()) || null;
-      } catch (error: any) {
-        console.warn(error.name, error.message);
-      }
-    }
-
-    const { file, fileHandle } = await getFileFromEvent(event);
+    const { file: fileDrop, fileHandle } = await getFileFromEvent(event);
     const { x: sceneX, y: sceneY } = viewportCoordsToSceneCoords(
       event,
       this.state,
     );
+    fileDrop && (file = fileDrop);
+    if (
+      !file &&
+      event.dataTransfer?.types?.includes(
+        "application/vnd.sitepilotlibraryimage",
+      )
+    ) {
+      const data = event.dataTransfer?.getData(
+        "application/vnd.sitepilotlibraryimage",
+      );
+      if (data) {
+        const images = this.getImageLibraryItems();
+        const image = Array.from(images).find(
+          (imgNode) => imgNode.getAttribute("src") === data,
+        );
+        //get the image from the library
+        if (image) {
+          const base64 = await toDataURL(data);
+          if (base64 && typeof base64 === "string") {
+            const fileData = base64ToFile(base64, "image/png");
+            file = fileData;
+          }
+        }
+      }
+    }
 
     try {
       if (isSupportedImageFile(file)) {
@@ -7541,6 +7554,7 @@ class App extends React.Component<AppProps, AppState> {
 
     if (event.dataTransfer?.types?.includes("text/plain")) {
       const text = event.dataTransfer?.getData("text");
+
       if (
         text &&
         embeddableURLValidator(text, this.props.validateEmbeddable) &&
